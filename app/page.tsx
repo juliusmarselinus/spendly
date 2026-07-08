@@ -23,6 +23,16 @@ function getLocalDateString(d: Date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+function parseAmountInput(raw: string): number {
+  const preview = formatShorthandPreview(raw);
+  if (preview) {
+    const digits = preview.replace(/\D/g, "");
+    return digits ? parseInt(digits, 10) : 0;
+  }
+  const digits = raw.replace(/\D/g, "");
+  return digits ? parseInt(digits, 10) : 0;
+}
+
 function HomeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -69,13 +79,20 @@ function HomeContent() {
     setLoading(false);
   }
 
+  function closeForm() {
+    setShowForm(false);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!amount || Number(amount) <= 0) return;
+
+    const finalAmount = parseAmountInput(amount);
+    if (!finalAmount || finalAmount <= 0) return;
+
     setSubmitting(true);
     const { error } = await supabase.from("transactions").insert({
       type,
-      amount: Number(amount),
+      amount: finalAmount,
       category,
       note: note || null,
       date,
@@ -84,7 +101,7 @@ function HomeContent() {
     if (!error) {
       setAmount("");
       setNote("");
-      setShowForm(false);
+      closeForm();
       fetchTransactions();
     } else {
       alert("Gagal menyimpan: " + error.message);
@@ -410,14 +427,17 @@ function HomeContent() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/70 flex items-end justify-center z-50">
-          <div className="bg-neutral-900 w-full max-w-md rounded-t-3xl p-6 pb-8">
+        <div
+          className="fixed inset-0 bg-black/70 flex items-end justify-center z-50"
+          onClick={closeForm}
+        >
+          <div
+            className="bg-neutral-900 w-full max-w-md rounded-t-3xl p-6 pb-8"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Tambah transaksi</h3>
-              <button
-                onClick={() => setShowForm(false)}
-                className="text-neutral-400 text-xl"
-              >
+              <button onClick={closeForm} className="text-neutral-400 text-xl">
                 <X size={20} />
               </button>
             </div>
@@ -541,14 +561,6 @@ function HomeContent() {
               <button
                 type="submit"
                 disabled={submitting}
-                onClick={(e) => {
-                  const parsed = formatShorthandPreview(amount);
-                  if (parsed) {
-                    e.preventDefault();
-                    setAmount(String(parseInt(parsed.replace(/\D/g, ""))));
-                    setTimeout(() => (document.activeElement as HTMLElement)?.blur(), 0);
-                  }
-                }}
                 className="w-full bg-gradient-to-br from-emerald-400 to-teal-600 text-emerald-950 py-3 rounded-lg font-semibold disabled:opacity-50"
               >
                 {submitting ? "Menyimpan..." : "Simpan"}
