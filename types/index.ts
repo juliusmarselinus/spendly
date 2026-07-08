@@ -10,6 +10,13 @@ export interface Transaction {
   created_at: string;
 }
 
+export interface Budget {
+  id: string;
+  category: string;
+  monthly_limit: number;
+  created_at: string;
+}
+
 export const EXPENSE_CATEGORIES = [
   "Makanan",
   "Transport/Bensin",
