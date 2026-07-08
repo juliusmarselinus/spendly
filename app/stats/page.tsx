@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Transaction } from "@/types";
 import BottomNav from "../components/BottomNav";
+import { TrendingUp } from "lucide-react";
 import {
   PieChart,
   Pie,
@@ -34,10 +35,45 @@ export default function StatsPage() {
   }
 
   const formatRupiah = (n: number) => "Rp" + n.toLocaleString("id-ID");
-
-  // formatter khusus buat Tooltip recharts, biar type-nya cocok
-  // (recharts ngasih value: ValueType | undefined, bukan cuma number)
   const tooltipFormatter = (value: any) => formatRupiah(Number(value) || 0);
+
+  // ringkasan hari ini
+  const todayStr = new Date().toISOString().split("T")[0];
+  const todayIncome = transactions
+    .filter((t) => t.type === "income" && t.date === todayStr)
+    .reduce((s, t) => s + Number(t.amount), 0);
+  const todayExpense = transactions
+    .filter((t) => t.type === "expense" && t.date === todayStr)
+    .reduce((s, t) => s + Number(t.amount), 0);
+  const todaySelisih = todayIncome - todayExpense;
+
+  // insight tren minggu ini vs minggu lalu
+  const insightText = useMemo(() => {
+    const now = new Date();
+    const weekAgo = new Date(now);
+    weekAgo.setDate(now.getDate() - 7);
+    const twoWeeksAgo = new Date(now);
+    twoWeeksAgo.setDate(now.getDate() - 14);
+
+    const thisWeekExpense = transactions
+      .filter((t) => t.type === "expense" && new Date(t.date) >= weekAgo)
+      .reduce((s, t) => s + Number(t.amount), 0);
+    const lastWeekExpense = transactions
+      .filter(
+        (t) =>
+          t.type === "expense" &&
+          new Date(t.date) >= twoWeeksAgo &&
+          new Date(t.date) < weekAgo
+      )
+      .reduce((s, t) => s + Number(t.amount), 0);
+
+    if (lastWeekExpense === 0) return "Belum cukup data untuk insight minggu ini";
+    const diff = ((thisWeekExpense - lastWeekExpense) / lastWeekExpense) * 100;
+    if (diff > 5) return `Pengeluaranmu naik ${Math.round(diff)}% dari minggu lalu`;
+    if (diff < -5)
+      return `Mantap, pengeluaranmu turun ${Math.round(Math.abs(diff))}% dari minggu lalu`;
+    return "Pengeluaranmu cukup stabil minggu ini";
+  }, [transactions]);
 
   // breakdown kategori pengeluaran bulan ini
   const categoryData = useMemo(() => {
@@ -103,6 +139,34 @@ export default function StatsPage() {
 
       {!loading && (
         <div className="px-5 space-y-8">
+          {/* Ringkasan hari ini + insight (pindahan dari Home) */}
+          <div className="space-y-3">
+            <div className="bg-neutral-900 rounded-2xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-neutral-500 text-xs mb-1">Hari ini</p>
+                <p
+                  className={`text-lg font-semibold ${
+                    todaySelisih >= 0 ? "text-emerald-400" : "text-rose-400"
+                  }`}
+                >
+                  {todaySelisih >= 0 ? "+" : ""}
+                  {formatRupiah(todaySelisih)}
+                </p>
+              </div>
+              <div className="text-right text-xs text-neutral-500">
+                <p>Masuk {formatRupiah(todayIncome)}</p>
+                <p>Keluar {formatRupiah(todayExpense)}</p>
+              </div>
+            </div>
+
+            <div className="bg-neutral-900 rounded-2xl p-4 flex items-center gap-3 border border-neutral-800">
+              <div className="w-9 h-9 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                <TrendingUp size={16} className="text-emerald-400" />
+              </div>
+              <p className="text-sm text-neutral-300">{insightText}</p>
+            </div>
+          </div>
+
           {/* Pie chart kategori */}
           <div>
             <h2 className="text-lg font-semibold mb-3">
