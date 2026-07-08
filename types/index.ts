@@ -26,4 +26,4 @@ export const EXPENSE_CATEGORIES = [
   "Lainnya",
 ];
 
-export const INCOME_CATEGORIES = ["Gaji", "Bonus", "Lainnya"];
+export const INCOME_CATEGORIES = ["Pendapatan", "Tips", "Lainnya"];

@@ -9,6 +9,7 @@ import {
   Gift,
   TrendingUp,
   PiggyBank,
+  Coins,
   Tag,
   LucideIcon,
 } from "lucide-react";
@@ -26,8 +27,9 @@ const KEYWORD_MAP: { keywords: string[]; style: CategoryStyle }[] = [
   { keywords: ["hiburan", "nonton", "game", "film", "movie"], style: { icon: Film, color: "#9B8FF2", bg: "#251F44" } },
   { keywords: ["kesehatan", "obat", "dokter", "sakit"], style: { icon: HeartPulse, color: "#F0696A", bg: "#3D1A1A" } },
   { keywords: ["tagihan", "listrik", "wifi", "internet", "pulsa", "langganan"], style: { icon: Receipt, color: "#E0A63F", bg: "#3A2C10" } },
-  { keywords: ["gaji", "salary", "thr"], style: { icon: Wallet, color: "#3ECB93", bg: "#0F3327" } },
-  { keywords: ["hadiah", "gift", "bonus"], style: { icon: Gift, color: "#F08A5D", bg: "#3E2213" } },
+  { keywords: ["pendapatan", "gaji", "salary", "upah", "honor"], style: { icon: Wallet, color: "#3ECB93", bg: "#0F3327" } },
+  { keywords: ["hadiah", "gift", "bonus", "thr"], style: { icon: Gift, color: "#F08A5D", bg: "#3E2213" } },
+  { keywords: ["tip", "tips"], style: { icon: Coins, color: "#F2C14E", bg: "#3A2E0C" } },
   { keywords: ["investasi", "saham", "untung", "profit"], style: { icon: TrendingUp, color: "#8BC34A", bg: "#22300F" } },
   { keywords: ["tabungan", "nabung", "saving"], style: { icon: PiggyBank, color: "#3ECB93", bg: "#0F3327" } },
 ];

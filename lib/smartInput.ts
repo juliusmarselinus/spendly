@@ -1,6 +1,13 @@
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, TransactionType } from "@/types";
 
-const INCOME_HINTS = ["gaji", "salary", "bonus", "thr", "untung", "profit", "jual", "hasil", "uang saku", "hadiah", "cashback", "transfer masuk"];
+const INCOME_HINTS = ["gaji", "pendapatan", "salary", "upah", "honor", "bonus", "thr", "tip", "tips", "untung", "profit", "jual", "hasil", "uang saku", "hadiah", "cashback", "transfer masuk"];
+
+// Kata kunci -> kategori income spesifik (dicek sebelum fallback generic)
+const INCOME_CATEGORY_KEYWORDS: { keywords: string[]; category: string }[] = [
+  { keywords: ["gaji", "pendapatan", "salary", "upah", "honor"], category: "Pendapatan" },
+  { keywords: ["bonus", "thr"], category: "Bonus" },
+  { keywords: ["tip", "tips"], category: "Tips" },
+];
 
 export function parseAmountToken(raw: string): number | null {
   const match = raw.match(/^(\d+(?:[.,]\d+)?)(k|rb|jt|juta)?$/i);
@@ -20,8 +27,17 @@ export function formatShorthandPreview(raw: string): string | null {
   return "Rp" + value.toLocaleString("id-ID");
 }
 
-function matchCategory(text: string, categories: readonly string[]): string {
+function matchCategory(text: string, categories: readonly string[], isIncome: boolean): string {
   const lower = text.toLowerCase();
+
+  if (isIncome) {
+    for (const entry of INCOME_CATEGORY_KEYWORDS) {
+      if (entry.keywords.some((k) => lower.includes(k)) && categories.includes(entry.category)) {
+        return entry.category;
+      }
+    }
+  }
+
   const found = categories.find((c) => lower.includes(c.toLowerCase()));
   if (found) return found;
   const other = categories.find((c) => c.toLowerCase().includes("lain"));
@@ -58,7 +74,7 @@ export function parseSmartInput(text: string): ParsedSmartInput | null {
   const isIncome = INCOME_HINTS.some((hint) => lower.includes(hint));
   const type: TransactionType = isIncome ? "income" : "expense";
   const categories = isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
-  const category = matchCategory(remainder, categories);
+  const category = matchCategory(remainder, categories, isIncome);
   const note = remainder ? remainder.charAt(0).toUpperCase() + remainder.slice(1) : "";
 
   return { type, amount, category, note };
