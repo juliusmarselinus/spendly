@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import {
   Transaction,
@@ -10,27 +11,18 @@ import {
   INCOME_CATEGORIES,
 } from "@/types";
 import BottomNav from "./components/BottomNav";
+import TransactionRow from "./components/TransactionRow";
+import TransactionDetailSheet from "./components/TransactionDetailSheet";
 import { getCategoryStyle } from "../lib/categoryMeta";
 import { parseSmartInput, formatShorthandPreview } from "../lib/smartInput";
-import { Search, X, Wallet, Sparkles, Coins } from "lucide-react";
-
-type FilterPeriod = "all" | "month" | "3months" | "custom";
+import { groupTransactionsByDate } from "../lib/dateGroup";
+import { Search, X, Wallet, Sparkles, Coins, ChevronRight } from "lucide-react";
 
 function getLocalDateString(d: Date = new Date()): string {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-function parseAmountInput(raw: string): number {
-  const preview = formatShorthandPreview(raw);
-  if (preview) {
-    const digits = preview.replace(/\D/g, "");
-    return digits ? parseInt(digits, 10) : 0;
-  }
-  const digits = raw.replace(/\D/g, "");
-  return digits ? parseInt(digits, 10) : 0;
 }
 
 function HomeContent() {
@@ -40,13 +32,7 @@ function HomeContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-
-  const [search, setSearch] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
-  const [filterPeriod, setFilterPeriod] = useState<FilterPeriod>("all");
-  const [customStart, setCustomStart] = useState("");
-  const [customEnd, setCustomEnd] = useState("");
-  const [showFilter, setShowFilter] = useState(false);
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
 
   const [smartText, setSmartText] = useState("");
 
@@ -79,20 +65,13 @@ function HomeContent() {
     setLoading(false);
   }
 
-  function closeForm() {
-    setShowForm(false);
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
-    const finalAmount = parseAmountInput(amount);
-    if (!finalAmount || finalAmount <= 0) return;
-
+    if (!amount || Number(amount) <= 0) return;
     setSubmitting(true);
     const { error } = await supabase.from("transactions").insert({
       type,
-      amount: finalAmount,
+      amount: Number(amount),
       category,
       note: note || null,
       date,
@@ -101,7 +80,7 @@ function HomeContent() {
     if (!error) {
       setAmount("");
       setNote("");
-      closeForm();
+      setShowForm(false);
       fetchTransactions();
     } else {
       alert("Gagal menyimpan: " + error.message);
@@ -127,7 +106,6 @@ function HomeContent() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Hapus transaksi ini?")) return;
     const { error } = await supabase.from("transactions").delete().eq("id", id);
     if (!error) fetchTransactions();
   }
@@ -140,39 +118,22 @@ function HomeContent() {
     .reduce((s, t) => s + Number(t.amount), 0);
   const totalBalance = totalIncome - totalExpense;
 
-  const filteredTransactions = useMemo(() => {
-    let result = transactions;
-    const now = new Date();
-    if (filterPeriod === "month") {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1);
-      result = result.filter((t) => new Date(t.date) >= start);
-    } else if (filterPeriod === "3months") {
-      const start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-      result = result.filter((t) => new Date(t.date) >= start);
-    } else if (filterPeriod === "custom" && customStart && customEnd) {
-      result = result.filter((t) => t.date >= customStart && t.date <= customEnd);
-    }
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (t) =>
-          t.category.toLowerCase().includes(q) ||
-          (t.note && t.note.toLowerCase().includes(q))
-      );
-    }
-    return result;
-  }, [transactions, filterPeriod, customStart, customEnd, search]);
-
   const formatRupiah = (n: number) => "Rp" + n.toLocaleString("id-ID");
   const categories = type === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
-  const periodLabels: Record<FilterPeriod, string> = {
-    all: "Semua",
-    month: "Bulan Ini",
-    "3months": "3 Bulan Terakhir",
-    custom: "Custom",
-  };
   const smartPreview = parseSmartInput(smartText);
   const amountPreview = formatShorthandPreview(amount);
+  const quickCategories = EXPENSE_CATEGORIES.slice(0, 6);
+
+  function openFormWithCategory(cat: string) {
+    setType("expense");
+    setCategory(cat);
+    setShowForm(true);
+  }
+
+  const recentGroups = useMemo(() => {
+    const all = groupTransactionsByDate(transactions);
+    return all.filter((g) => g.label === "Hari ini" || g.label === "Kemarin");
+  }, [transactions]);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -188,17 +149,8 @@ function HomeContent() {
     month: "long",
   });
 
-  const quickCategories = EXPENSE_CATEGORIES.slice(0, 6);
-
-  function openFormWithCategory(cat: string) {
-    setType("expense");
-    setCategory(cat);
-    setShowForm(true);
-  }
-
   return (
     <div className="relative min-h-screen bg-[#0E1013] text-white pb-28 overflow-hidden">
-      {/* Blob dekoratif di background, biar nggak flat polos */}
       <div className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full bg-emerald-500/20 blur-3xl -z-10" />
       <div className="pointer-events-none absolute top-1/3 -left-20 w-64 h-64 rounded-full bg-teal-500/10 blur-3xl -z-10" />
       <div className="pointer-events-none absolute bottom-40 right-0 w-56 h-56 rounded-full bg-purple-500/10 blur-3xl -z-10" />
@@ -208,16 +160,12 @@ function HomeContent() {
           <p className="text-neutral-500 text-xs">{todayLabel}</p>
           <h1 className="text-xl font-semibold mt-0.5">{greeting}</h1>
         </div>
-        <button
-          onClick={() => setShowSearch(!showSearch)}
+        <Link
+          href="/history"
           className="w-10 h-10 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center shrink-0"
         >
-          {showSearch ? (
-            <X size={16} className="text-neutral-400" />
-          ) : (
-            <Search size={16} className="text-neutral-400" />
-          )}
-        </button>
+          <Search size={16} className="text-neutral-400" />
+        </Link>
       </div>
 
       <div className="px-5">
@@ -274,7 +222,6 @@ function HomeContent() {
         )}
       </div>
 
-      {/* Quick category chips */}
       <div className="mt-4 pl-5 overflow-x-auto">
         <div className="flex gap-2 pr-5 w-max">
           {quickCategories.map((cat) => {
@@ -299,64 +246,17 @@ function HomeContent() {
         </div>
       </div>
 
-      {showSearch && (
-        <div className="px-5 mt-4 space-y-2">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari transaksi (kategori/catatan)..."
-            className="w-full bg-neutral-900 rounded-lg px-4 py-2.5 text-sm placeholder:text-neutral-600"
-          />
-          <button
-            onClick={() => setShowFilter(!showFilter)}
-            className="text-sm text-neutral-400"
-          >
-            Periode: <span className="text-white">{periodLabels[filterPeriod]}</span> ▾
-          </button>
-          {showFilter && (
-            <div className="bg-neutral-900 rounded-lg p-3 space-y-2">
-              <div className="flex flex-wrap gap-2">
-                {(["all", "month", "3months", "custom"] as FilterPeriod[]).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setFilterPeriod(p)}
-                    className={`px-3 py-1.5 rounded-full text-xs ${
-                      filterPeriod === p
-                        ? "bg-emerald-600 text-white"
-                        : "bg-neutral-800 text-neutral-400"
-                    }`}
-                  >
-                    {periodLabels[p]}
-                  </button>
-                ))}
-              </div>
-              {filterPeriod === "custom" && (
-                <div className="flex gap-2 pt-1">
-                  <input
-                    type="date"
-                    value={customStart}
-                    onChange={(e) => setCustomStart(e.target.value)}
-                    className="flex-1 bg-neutral-800 rounded-lg px-3 py-2 text-sm"
-                  />
-                  <input
-                    type="date"
-                    value={customEnd}
-                    onChange={(e) => setCustomEnd(e.target.value)}
-                    className="flex-1 bg-neutral-800 rounded-lg px-3 py-2 text-sm"
-                  />
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
       <div className="px-5 mt-7">
-        <h2 className="text-lg font-semibold mb-3">Riwayat transaksi</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold">Riwayat transaksi</h2>
+          <Link href="/history" className="text-xs text-emerald-400 flex items-center gap-0.5">
+            Lihat semua <ChevronRight size={14} />
+          </Link>
+        </div>
+
         {loading && <p className="text-neutral-500 text-sm">Memuat...</p>}
 
-        {!loading && filteredTransactions.length === 0 && (
+        {!loading && transactions.length === 0 && (
           <div className="relative flex flex-col items-center text-center py-12 px-4 bg-neutral-900/50 rounded-2xl border border-dashed border-neutral-800 overflow-hidden">
             <div className="relative w-20 h-20 mb-4">
               <div className="absolute inset-0 rounded-full bg-emerald-500/10 flex items-center justify-center">
@@ -376,68 +276,40 @@ function HomeContent() {
           </div>
         )}
 
-        <div className="space-y-2">
-          {filteredTransactions.map((t) => {
-            const style = getCategoryStyle(t.category);
-            const Icon = style.icon;
-            return (
-              <div
-                key={t.id}
-                className="bg-neutral-900 rounded-xl p-4 flex items-center gap-3"
-              >
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: style.bg }}
-                >
-                  <Icon size={18} style={{ color: style.color }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{t.category}</p>
-                  {t.note && (
-                    <p className="text-neutral-500 text-sm truncate">{t.note}</p>
-                  )}
-                  <p className="text-neutral-600 text-xs mt-0.5">
-                    {new Date(t.date).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <p
-                    className={`font-semibold text-sm ${
-                      t.type === "income" ? "text-emerald-400" : "text-rose-400"
-                    }`}
-                  >
-                    {t.type === "income" ? "+" : "-"}
-                    {formatRupiah(Number(t.amount))}
-                  </p>
-                  <button
-                    onClick={() => handleDelete(t.id)}
-                    className="text-neutral-600 text-xs"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
+        {!loading && transactions.length > 0 && recentGroups.length === 0 && (
+          <p className="text-neutral-500 text-sm">
+            Belum ada transaksi hari ini atau kemarin.
+          </p>
+        )}
+
+        <div className="space-y-5">
+          {recentGroups.map((group) => (
+            <div key={group.date}>
+              <p className="text-neutral-500 text-xs font-medium mb-2">{group.label}</p>
+              <div className="space-y-2">
+                {group.transactions.map((t) => (
+                  <TransactionRow key={t.id} transaction={t} onClick={() => setSelectedTx(t)} />
+                ))}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </div>
 
+      {selectedTx && (
+        <TransactionDetailSheet
+          transaction={selectedTx}
+          onClose={() => setSelectedTx(null)}
+          onDelete={handleDelete}
+        />
+      )}
+
       {showForm && (
-        <div
-          className="fixed inset-0 bg-black/70 flex items-end justify-center z-50"
-          onClick={closeForm}
-        >
-          <div
-            className="bg-neutral-900 w-full max-w-md rounded-t-3xl p-6 pb-8"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 bg-black/70 flex items-end justify-center z-50">
+          <div className="bg-neutral-900 w-full max-w-md rounded-t-3xl p-6 pb-8">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Tambah transaksi</h3>
-              <button onClick={closeForm} className="text-neutral-400 text-xl">
+              <button onClick={() => setShowForm(false)} className="text-neutral-400 text-xl">
                 <X size={20} />
               </button>
             </div>
@@ -561,6 +433,14 @@ function HomeContent() {
               <button
                 type="submit"
                 disabled={submitting}
+                onClick={(e) => {
+                  const parsed = formatShorthandPreview(amount);
+                  if (parsed) {
+                    e.preventDefault();
+                    setAmount(String(parseInt(parsed.replace(/\D/g, ""))));
+                    setTimeout(() => (document.activeElement as HTMLElement)?.blur(), 0);
+                  }
+                }}
                 className="w-full bg-gradient-to-br from-emerald-400 to-teal-600 text-emerald-950 py-3 rounded-lg font-semibold disabled:opacity-50"
               >
                 {submitting ? "Menyimpan..." : "Simpan"}
