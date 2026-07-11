@@ -37,9 +37,18 @@ export default function HistoryPage() {
     setLoading(false);
   }
 
-  async function handleDelete(id: string) {
-    const { error } = await supabase.from("transactions").delete().eq("id", id);
-    if (!error) fetchTransactions();
+  function handleDelete(id: string): void {
+    supabase
+      .from("transactions")
+      .delete()
+      .eq("id", id)
+      .then(({ error }) => {
+        if (!error) {
+          fetchTransactions();
+        } else {
+          alert("Gagal menghapus: " + error.message);
+        }
+      });
   }
 
   const filteredTransactions = useMemo(() => {
@@ -174,6 +183,7 @@ export default function HistoryPage() {
           transaction={selectedTx}
           onClose={() => setSelectedTx(null)}
           onDelete={handleDelete}
+          onUpdated={fetchTransactions}
         />
       )}
     </div>
