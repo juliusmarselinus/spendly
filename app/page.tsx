@@ -133,9 +133,19 @@ function HomeContent() {
     }
   }
 
-  async function handleDelete(id: string) {
-    const { error } = await supabase.from("transactions").delete().eq("id", id);
-    if (!error) fetchTransactions();
+  // DISINI PERUBAHANNYA: Mengubah return type menjadi void (bukan Promise<void>) agar cocok dengan props komponen anak
+  function handleDelete(id: string): void {
+    supabase
+      .from("transactions")
+      .delete()
+      .eq("id", id)
+      .then(({ error }) => {
+        if (!error) {
+          fetchTransactions();
+        } else {
+          alert("Gagal menghapus: " + error.message);
+        }
+      });
   }
 
   const todayStr = getLocalDateString();
