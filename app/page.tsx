@@ -25,6 +25,24 @@ function getLocalDateString(d: Date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+// konversi input jumlah (termasuk shorthand 30k / 1jt) jadi angka murni
+function parseAmountValue(input: string): number {
+  const cleaned = input.trim().toLowerCase().replace(/\s+/g, "");
+  if (!cleaned) return 0;
+
+  const match = cleaned.match(/^([\d.,]+)(k|rb|jt|juta)?$/);
+  if (!match) {
+    const digits = input.replace(/\D/g, "");
+    return digits ? parseInt(digits, 10) : 0;
+  }
+
+  let num = parseFloat(match[1].replace(",", "."));
+  const suffix = match[2];
+  if (suffix === "k" || suffix === "rb") num *= 1000;
+  if (suffix === "jt" || suffix === "juta") num *= 1000000;
+  return Math.round(num);
+}
+
 function HomeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -67,11 +85,13 @@ function HomeContent() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!amount || Number(amount) <= 0) return;
+    const amountValue = parseAmountValue(amount);
+    if (!amountValue || amountValue <= 0) return;
+
     setSubmitting(true);
     const { error } = await supabase.from("transactions").insert({
       type,
-      amount: Number(amount),
+      amount: amountValue,
       category,
       note: note || null,
       date,
@@ -433,14 +453,6 @@ function HomeContent() {
               <button
                 type="submit"
                 disabled={submitting}
-                onClick={(e) => {
-                  const parsed = formatShorthandPreview(amount);
-                  if (parsed) {
-                    e.preventDefault();
-                    setAmount(String(parseInt(parsed.replace(/\D/g, ""))));
-                    setTimeout(() => (document.activeElement as HTMLElement)?.blur(), 0);
-                  }
-                }}
                 className="w-full bg-gradient-to-br from-emerald-400 to-teal-600 text-emerald-950 py-3 rounded-lg font-semibold disabled:opacity-50"
               >
                 {submitting ? "Menyimpan..." : "Simpan"}
