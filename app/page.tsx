@@ -162,7 +162,7 @@ function HomeContent() {
 
   const saldo = totalIncomeAllTime - totalExpenseAllTime - totalSavings;
 
-  const formatRupiah = (n: number) => "Rp" + n.toLocaleString("id-ID");
+  const formatRupiah = (n: number) => "Rp " + n.toLocaleString("id-ID");
   const categories = type === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
   const smartPreview = parseSmartInput(smartText);
   const amountPreview = formatShorthandPreview(amount);

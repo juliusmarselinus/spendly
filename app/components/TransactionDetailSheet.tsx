@@ -23,17 +23,19 @@ function parseAmountValue(input: string): number {
   return Math.round(num);
 }
 
+interface TransactionDetailSheetProps {
+  transaction: Transaction;
+  onClose: () => void;
+  onDelete: (id: string) => void;
+  onUpdated: () => void;
+}
+
 export default function TransactionDetailSheet({
   transaction,
   onClose,
   onDelete,
   onUpdated,
-}: {
-  transaction: Transaction;
-  onClose: () => void;
-  onDelete: (id: string) => void;
-  onUpdated: () => void;
-}) {
+}: TransactionDetailSheetProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -45,7 +47,7 @@ export default function TransactionDetailSheet({
 
   const style = getCategoryStyle(isEditing ? editCategory : transaction.category);
   const Icon = style.icon;
-  const formatRupiah = (n: number) => "Rp" + n.toLocaleString("id-ID");
+  const formatRupiah = (n: number) => "Rp " + n.toLocaleString("id-ID");
   const categories = editType === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
 
   function startEdit() {
@@ -105,11 +107,11 @@ export default function TransactionDetailSheet({
           </h3>
           <div className="flex items-center gap-3">
             {!isEditing && (
-              <button onClick={startEdit} className="text-neutral-400">
+              <button onClick={startEdit} className="text-neutral-400 active:scale-95 transition">
                 <Pencil size={18} />
               </button>
             )}
-            <button onClick={handleClose} className="text-neutral-400">
+            <button onClick={handleClose} className="text-neutral-400 active:scale-95 transition">
               <X size={20} />
             </button>
           </div>
@@ -156,7 +158,7 @@ export default function TransactionDetailSheet({
               {transaction.note && (
                 <div className="flex justify-between py-2.5 border-b border-neutral-800">
                   <span className="text-neutral-500 text-sm">Catatan</span>
-                  <span className="text-sm font-medium text-right max-w-[60%]">
+                  <span className="text-sm font-medium text-right max-w-[60%] break-words">
                     {transaction.note}
                   </span>
                 </div>
@@ -168,7 +170,7 @@ export default function TransactionDetailSheet({
                 onDelete(transaction.id);
                 onClose();
               }}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-rose-600/10 text-rose-400 font-medium"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-rose-600/10 text-rose-400 font-medium active:scale-[0.99] transition"
             >
               <Trash2 size={16} />
               Hapus Transaksi
@@ -185,7 +187,7 @@ export default function TransactionDetailSheet({
                     setEditCategory(EXPENSE_CATEGORIES[0]);
                   }
                 }}
-                className={`flex-1 py-2 rounded-lg font-medium ${
+                className={`flex-1 py-2 rounded-lg font-medium transition ${
                   editType === "expense"
                     ? "bg-rose-600 text-white"
                     : "bg-neutral-800 text-neutral-400"
@@ -201,7 +203,7 @@ export default function TransactionDetailSheet({
                     setEditCategory(INCOME_CATEGORIES[0]);
                   }
                 }}
-                className={`flex-1 py-2 rounded-lg font-medium ${
+                className={`flex-1 py-2 rounded-lg font-medium transition ${
                   editType === "income"
                     ? "bg-emerald-600 text-white"
                     : "bg-neutral-800 text-neutral-400"
@@ -218,7 +220,7 @@ export default function TransactionDetailSheet({
                 inputMode="numeric"
                 value={editAmount}
                 onChange={(e) => setEditAmount(e.target.value)}
-                className="w-full mt-1 bg-neutral-800 rounded-lg px-4 py-3 text-lg"
+                className="w-full mt-1 bg-neutral-800 rounded-lg px-4 py-3 text-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
             </div>
 
@@ -234,7 +236,7 @@ export default function TransactionDetailSheet({
                       key={c}
                       type="button"
                       onClick={() => setEditCategory(c)}
-                      className={`flex flex-col items-center gap-1.5 py-3 px-1 rounded-xl border transition ${
+                      className={`flex flex-col items-center gap-1.5 py-3 px-1 rounded-xl border transition active:scale-95 ${
                         selected
                           ? "border-emerald-500 bg-emerald-500/10"
                           : "border-neutral-800 bg-neutral-800/40"
@@ -265,7 +267,7 @@ export default function TransactionDetailSheet({
                 type="date"
                 value={editDate}
                 onChange={(e) => setEditDate(e.target.value)}
-                className="w-full mt-1 bg-neutral-800 rounded-lg px-4 py-3"
+                className="w-full mt-1 bg-neutral-800 rounded-lg px-4 py-3 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-white [color-scheme:dark]"
               />
             </div>
 
@@ -276,7 +278,7 @@ export default function TransactionDetailSheet({
                 value={editNote}
                 onChange={(e) => setEditNote(e.target.value)}
                 placeholder="misal: makan siang"
-                className="w-full mt-1 bg-neutral-800 rounded-lg px-4 py-3"
+                className="w-full mt-1 bg-neutral-800 rounded-lg px-4 py-3 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
             </div>
 
@@ -284,7 +286,7 @@ export default function TransactionDetailSheet({
               <button
                 type="button"
                 onClick={() => setIsEditing(false)}
-                className="flex-1 py-3 rounded-lg font-medium bg-neutral-800 text-neutral-300"
+                className="flex-1 py-3 rounded-lg font-medium bg-neutral-800 text-neutral-300 active:scale-[0.99] transition"
               >
                 Batal
               </button>
@@ -292,7 +294,7 @@ export default function TransactionDetailSheet({
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="flex-1 bg-gradient-to-br from-emerald-400 to-teal-600 text-emerald-950 py-3 rounded-lg font-semibold disabled:opacity-50"
+                className="flex-1 bg-gradient-to-br from-emerald-400 to-teal-600 text-emerald-950 py-3 rounded-lg font-semibold disabled:opacity-50 active:scale-[0.99] transition"
               >
                 {saving ? "Menyimpan..." : "Simpan"}
               </button>
