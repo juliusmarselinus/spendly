@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import {
   Transaction,
   TransactionType,
+  SavingsEntry,
   EXPENSE_CATEGORIES,
   INCOME_CATEGORIES,
 } from "@/types";
@@ -48,6 +49,7 @@ function HomeContent() {
   const router = useRouter();
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [savings, setSavings] = useState<SavingsEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
@@ -63,6 +65,7 @@ function HomeContent() {
 
   useEffect(() => {
     fetchTransactions();
+    fetchSavings();
   }, []);
 
   useEffect(() => {
@@ -81,6 +84,11 @@ function HomeContent() {
       .order("created_at", { ascending: false });
     if (!error && data) setTransactions(data);
     setLoading(false);
+  }
+
+  async function fetchSavings() {
+    const { data, error } = await supabase.from("savings").select("*");
+    if (!error && data) setSavings(data);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -130,13 +138,29 @@ function HomeContent() {
     if (!error) fetchTransactions();
   }
 
-  const totalIncome = transactions
+  const todayStr = getLocalDateString();
+
+  // total all-time buat itung saldo
+  const totalIncomeAllTime = transactions
     .filter((t) => t.type === "income")
     .reduce((s, t) => s + Number(t.amount), 0);
-  const totalExpense = transactions
+  const totalExpenseAllTime = transactions
     .filter((t) => t.type === "expense")
     .reduce((s, t) => s + Number(t.amount), 0);
-  const totalBalance = totalIncome - totalExpense;
+
+  // total khusus hari ini buat card kecil
+  const todayIncome = transactions
+    .filter((t) => t.type === "income" && t.date === todayStr)
+    .reduce((s, t) => s + Number(t.amount), 0);
+  const todayExpense = transactions
+    .filter((t) => t.type === "expense" && t.date === todayStr)
+    .reduce((s, t) => s + Number(t.amount), 0);
+
+  const totalSavings = savings.reduce((s, entry) => {
+    return entry.type === "deposit" ? s + Number(entry.amount) : s - Number(entry.amount);
+  }, 0);
+
+  const saldo = totalIncomeAllTime - totalExpenseAllTime - totalSavings;
 
   const formatRupiah = (n: number) => "Rp" + n.toLocaleString("id-ID");
   const categories = type === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
@@ -189,31 +213,34 @@ function HomeContent() {
       </div>
 
       <div className="px-5">
-        <div className="relative overflow-hidden rounded-3xl p-5 bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600">
+        <Link
+          href="/savings"
+          className="block relative overflow-hidden rounded-3xl p-5 bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 active:scale-[0.99] transition"
+        >
           <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10" />
           <div className="absolute -bottom-14 -left-8 w-32 h-32 rounded-full bg-white/10" />
 
           <div className="relative">
-            <p className="text-emerald-950/70 text-sm">Total saldo</p>
+            <p className="text-emerald-950/70 text-sm">Saldo</p>
             <p className="text-4xl font-bold mt-1 text-emerald-950">
-              {formatRupiah(totalBalance)}
+              {formatRupiah(saldo)}
             </p>
             <div className="flex gap-6 mt-4 pt-4 border-t border-emerald-950/15">
               <div>
-                <p className="text-emerald-900/60 text-xs">Pemasukan</p>
+                <p className="text-emerald-900/60 text-xs">Pemasukan hari ini</p>
                 <p className="text-sm font-semibold text-emerald-950">
-                  {formatRupiah(totalIncome)}
+                  {formatRupiah(todayIncome)}
                 </p>
               </div>
               <div>
-                <p className="text-emerald-900/60 text-xs">Pengeluaran</p>
+                <p className="text-emerald-900/60 text-xs">Pengeluaran hari ini</p>
                 <p className="text-sm font-semibold text-emerald-950">
-                  {formatRupiah(totalExpense)}
+                  {formatRupiah(todayExpense)}
                 </p>
               </div>
             </div>
           </div>
-        </div>
+        </Link>
       </div>
 
       <div className="px-5 mt-5">
@@ -321,12 +348,19 @@ function HomeContent() {
           transaction={selectedTx}
           onClose={() => setSelectedTx(null)}
           onDelete={handleDelete}
+          onUpdated={fetchTransactions}
         />
       )}
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/70 flex items-end justify-center z-50">
-          <div className="bg-neutral-900 w-full max-w-md rounded-t-3xl p-6 pb-8">
+        <div
+          className="fixed inset-0 bg-black/70 flex items-end justify-center z-50"
+          onClick={() => setShowForm(false)}
+        >
+          <div
+            className="bg-neutral-900 w-full max-w-md rounded-t-3xl p-6 pb-8"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Tambah transaksi</h3>
               <button onClick={() => setShowForm(false)} className="text-neutral-400 text-xl">

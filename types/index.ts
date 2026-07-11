@@ -10,6 +10,7 @@ export interface Transaction {
   created_at: string;
 }
 
+
 export interface Budget {
   id: string;
   category: string;
@@ -25,5 +26,16 @@ export const EXPENSE_CATEGORIES = [
   "Hiburan",
   "Lainnya",
 ];
+
+export type SavingsType = "deposit" | "withdraw";
+
+export interface SavingsEntry {
+  id: string;
+  type: SavingsType;
+  amount: number;
+  note: string | null;
+  date: string;
+  created_at: string;
+}
 
 export const INCOME_CATEGORIES = ["Pendapatan", "Tips", "Lainnya"];
