@@ -133,7 +133,6 @@ function HomeContent() {
     }
   }
 
-  // DISINI PERUBAHANNYA: Mengubah return type menjadi void (bukan Promise<void>) agar cocok dengan props komponen anak
   function handleDelete(id: string): void {
     supabase
       .from("transactions")
@@ -150,7 +149,6 @@ function HomeContent() {
 
   const todayStr = getLocalDateString();
 
-  // total all-time buat itung saldo
   const totalIncomeAllTime = transactions
     .filter((t) => t.type === "income")
     .reduce((s, t) => s + Number(t.amount), 0);
@@ -158,7 +156,6 @@ function HomeContent() {
     .filter((t) => t.type === "expense")
     .reduce((s, t) => s + Number(t.amount), 0);
 
-  // total khusus hari ini buat card kecil
   const todayIncome = transactions
     .filter((t) => t.type === "income" && t.date === todayStr)
     .reduce((s, t) => s + Number(t.amount), 0);
