@@ -17,7 +17,17 @@ import TransactionDetailSheet from "./components/TransactionDetailSheet";
 import { getCategoryStyle } from "../lib/categoryMeta";
 import { parseSmartInput, formatShorthandPreview } from "../lib/smartInput";
 import { groupTransactionsByDate } from "../lib/dateGroup";
-import { Search, X, Wallet, Sparkles, Coins, ChevronRight } from "lucide-react";
+import {
+  Search,
+  X,
+  Wallet,
+  Sparkles,
+  Coins,
+  ChevronRight,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+} from "lucide-react";
 
 function getLocalDateString(d: Date = new Date()): string {
   const year = d.getFullYear();
@@ -200,6 +210,11 @@ function HomeContent() {
     month: "long",
   });
 
+  // --- Selisih pemasukan vs pengeluaran hari ini ---
+  const todayNet = todayIncome - todayExpense;
+  const netTone = todayNet > 0 ? "positive" : todayNet < 0 ? "negative" : "neutral";
+  const NetIcon = { positive: TrendingUp, negative: TrendingDown, neutral: Minus }[netTone];
+
   return (
     <div className="relative min-h-screen bg-[#0E1013] text-white pb-28 overflow-hidden">
       <div className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full bg-emerald-500/20 blur-3xl -z-10" />
@@ -245,6 +260,15 @@ function HomeContent() {
                   {formatRupiah(todayExpense)}
                 </p>
               </div>
+            </div>
+
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-emerald-950/15">
+              <span className="text-emerald-900/60 text-xs">Selisih hari ini</span>
+              <span className="flex items-center gap-1 text-sm font-semibold text-emerald-950">
+                <NetIcon size={13} />
+                {todayNet > 0 ? "+" : todayNet < 0 ? "-" : ""}
+                {formatRupiah(Math.abs(todayNet))}
+              </span>
             </div>
           </div>
         </Link>
